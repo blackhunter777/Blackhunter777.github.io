@@ -1,96 +1,211 @@
 <!DOCTYPE html>
 <html lang="sq">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Zgjidhës Fjalekryqesh Shqip</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 700px;
-      margin: auto;
-      padding: 1rem;
-      background: #f7f7f7;
-    }
-    h1 {
-      text-align: center;
-      color: #2a7ae2;
-    }
-    input {
-      width: calc(100% - 1rem);
-      padding: 0.5rem;
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-    }
-    button {
-      padding: 0.5rem 1rem;
-      background: #2a7ae2;
-      color: white;
-      border: none;
-      font-size: 1rem;
-      cursor: pointer;
-      display: block;
-      margin: auto;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-    li {
-      background: white;
-      padding: 0.5rem;
-      margin: 0.2rem 0;
-      border-radius: 4px;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Zgjidhës Fjalekryqesh Shqip (Me fjalor të plotë)</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;background:#f7f9fc;color:#111;margin:0;padding:18px}
+  .wrap{max-width:880px;margin:0 auto}
+  h1{color:#1558d6}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  input[type=text], input[type=number], select, textarea{width:100%;padding:8px;border-radius:6px;border:1px solid #d9e2ef}
+  button{background:#1558d6;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+  .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 6px 18px rgba(18,38,63,0.06);margin-top:12px}
+  .small{font-size:13px;color:#666}
+  ul{list-style:none;padding:0;margin:0}
+  li{padding:8px;border-bottom:1px solid #f0f2f6;cursor:pointer}
+  .status{font-size:13px;color:#333;margin-top:8px}
+  .results{max-height:360px;overflow:auto;margin-top:8px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  .muted{color:#666;font-size:13px}
+  code{background:#f1f5f9;padding:2px 6px;border-radius:4px}
+</style>
 </head>
 <body>
+<div class="wrap">
+  <h1>Zgjidhës Fjalekryqesh — Shqip</h1>
+  <div class="muted">Shkruaj modelin me <code>_</code> si wildcard (p.sh. <code>e_tni_k_</code>) — faqja përdor një fjalor të plotë publik ose mund të ngarkosh tëndin (.txt, 1 fjalë/rresht).</div>
 
-<h1>Zgjidhës Fjalekryqesh</h1>
+  <div class="card">
+    <div class="row">
+      <div style="flex:1;min-width:220px">
+        <label class="small">Burimi i parazgjedhur i fjalorit</label>
+        <select id="wlSource">
+          <option value="https://raw.githubusercontent.com/its0x08/albanian-wordlist/main/shqip.txt">its0x08 / albanian-wordlist (shqip.txt)</option>
+          <option value="builtin">Fjalor i vogël (i parazgjedhur, offline)</option>
+        </select>
+        <div class="small" style="margin-top:6px">Nëse ke URL të vetë file raw .txt, ngjitje/shtyp atë këtu dhe përdoresh "Ngarkoji"</div>
+      </div>
 
-<p>Shkruaj modelin e fjalës ku "_" tregon shkronja të panjohura (p.sh. e_tni_k_):</p>
+      <div style="min-width:220px">
+        <label class="small">Ose ngarko fjalorin tënd (.txt)</label>
+        <input id="fileInput" type="file" accept=".txt" />
+        <div style="margin-top:6px"><button onclick="loadFile()">Ngarko .txt në memory</button></div>
+      </div>
 
-<input type="text" id="pattern" placeholder="Shkruaj modelin këtu..." />
-<button onclick="gjejFjalet()">Kërko</button>
+      <div style="min-width:200px">
+        <label class="small">Pattern</label>
+        <input id="pattern" type="text" placeholder="p.sh. e_tni_k_" />
+      </div>
 
-<ul id="results"></ul>
+      <div style="min-width:140px">
+        <label class="small">Max rezultate</label>
+        <input id="maxRes" type="number" value="200" min="1" max="2000" />
+      </div>
+    </div>
+
+    <div style="margin-top:10px" class="controls">
+      <button onclick="loadAndSearch()">Ngarko fjalor & Kërko</button>
+      <button onclick="searchOnly()">Vetëm Kërko (nëse fjalori është ngarkuar)</button>
+      <button style="background:#6b7280" onclick="clearResults()">Pastro rezultate</button>
+      <div class="status" id="status">Fjalori: <span id="wlCount">përdor fjalor të parazgjedhur</span></div>
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div class="small">Rezultatet (klikoni një rresht për ta kopjuar në clipboard):</div>
+      <div class="results"><ul id="results"></ul></div>
+    </div>
+  </div>
+
+  <div class="card small" style="margin-top:14px">
+    <b>Shënim rreth burimeve:</b> Nëse zgjidhni burimin publik nga GitHub, faqja do ta shkarkojë file-in raw nga GitHub (raw.githubusercontent.com). Nëse doni burim tjetër, vendos URL-në raw .txt në dropdown (ose ngarkoni file tuaj). Burimet publike të fjalorëve shqip gjenden në GitHub (p.sh. its0x08/albanian-wordlist). :contentReference[oaicite:1]{index=1}
+  </div>
+</div>
 
 <script>
-  // Fjalor shembull - mund ta zgjerojmë me mijëra fjalë
-  const fjalor = [
-    "shqiperia","shqiptar","shqiptare","kosova","iliria","etnike","etnik","matematike",
-    "politike","ekonomi","histori","botanik","teknologji","internet","kompjuter",
-    "program","programim","bibliotek","botimi","gazetar","gazetari","arsim","shkolla",
-    "shkencor","shkence","arsimor","gjuha","fjala","fjale","mik","mikpritje"
-  ];
+/* --- builtin tiny fallback wordlist (vetëm për test, jo i plotë) --- */
+const builtin = [
+  "shqiperia","shqiptar","shqiptare","ekonomik","politik","etnike","etnik",
+  "matematike","internet","kompjuter","program","programim","gjuha","fjale","fjalë",
+  "shkollë","shkollore","mjekesi","mjek","botanik","kulturë","muzikë","gazetari"
+];
 
-  function gjejFjalet() {
-    const pattern = document.getElementById("pattern").value.trim().toLowerCase();
-    const resultsList = document.getElementById("results");
-    resultsList.innerHTML = "";
+let wordlist = [];   // aktual (array of lowercase words)
+let loadedFrom = null;
 
-    if (!pattern) {
-      resultsList.innerHTML = "<li>Ju lutem shkruani një model fjale.</li>";
+/* Utility: normalize (lowercase, trim) */
+function norm(w){ return String(w||'').toLowerCase().trim(); }
+
+/* Load a raw .txt from URL (returns Promise of array) */
+async function fetchWordlist(url){
+  document.getElementById('status').textContent = "Po shkarkoj fjalorin nga: " + url;
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const txt = await res.text();
+    // split lines, normalize, dedupe
+    const arr = txt.split(/\r?\n/).map(l=>norm(l)).filter(l=>l.length>0);
+    // dedupe and filter non-alpha tokens
+    const uniq = Array.from(new Set(arr)).filter(w => /^[a-zëçâäôëç0-9'-]+$/i.test(w));
+    document.getElementById('status').textContent = "Fjalori i shkarkuar: " + uniq.length + " fjalë.";
+    return uniq;
+  }catch(err){
+    document.getElementById('status').textContent = "Gabim gjatë shkarkimit: " + err.message;
+    throw err;
+  }
+}
+
+/* Load local file input (.txt) into wordlist */
+function loadFile(){
+  const fi = document.getElementById('fileInput');
+  if(!fi.files || !fi.files[0]){ alert("Zgjidh një file .txt nga telefoni/PC."); return; }
+  const f = fi.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const txt = e.target.result;
+    const arr = txt.split(/\r?\n/).map(l=>norm(l)).filter(l=>l.length>0);
+    wordlist = Array.from(new Set(arr));
+    loadedFrom = 'local file: ' + f.name;
+    document.getElementById('wlCount').textContent = loadedFrom + " (" + wordlist.length + " fjalë)";
+    document.getElementById('status').textContent = "Fjalori u ngarkua nga file lokal.";
+  };
+  reader.readAsText(f,'utf-8');
+}
+
+/* Clear results */
+function clearResults(){ document.getElementById('results').innerHTML=''; }
+
+/* Load chosen source then run search */
+async function loadAndSearch(){
+  clearResults();
+  const sel = document.getElementById('wlSource').value;
+  if(sel === 'builtin'){
+    wordlist = builtin.slice();
+    loadedFrom = 'builtin';
+    document.getElementById('wlCount').textContent = 'builtin ('+wordlist.length+' fjalë)';
+    document.getElementById('status').textContent = 'Duke përdorur fjalorin e vogël të brendshëm.';
+    searchOnly();
+    return;
+  }
+  try{
+    const arr = await fetchWordlist(sel);
+    wordlist = arr;
+    loadedFrom = sel;
+    document.getElementById('wlCount').textContent = sel + ' ('+wordlist.length+' fjalë)';
+    searchOnly();
+  }catch(e){
+    alert("Ngarkimi i fjalorit dështoi: " + e.message);
+  }
+}
+
+/* Just run search against currently loaded wordlist (if empty, prompt to load default) */
+function searchOnly(){
+  if(!wordlist || wordlist.length === 0){
+    // autoload default source (first select option)
+    const sel = document.getElementById('wlSource').value;
+    if(sel && sel !== 'builtin'){
+      // try to auto load then search
+      loadAndSearch();
       return;
-    }
-
-    // Konverton "_" në "." për regex
-    const regexPattern = "^" + pattern.replace(/_/g, ".") + "$";
-    const regex = new RegExp(regexPattern);
-
-    const results = fjalor.filter(fjala => regex.test(fjala));
-
-    if (results.length > 0) {
-      results.forEach(fjala => {
-        const li = document.createElement("li");
-        li.textContent = fjala;
-        resultsList.appendChild(li);
-      });
     } else {
-      resultsList.innerHTML = "<li>Nuk u gjet asnjë fjalë që përputhet.</li>";
+      wordlist = builtin.slice();
+      document.getElementById('wlCount').textContent = 'builtin ('+wordlist.length+' fjalë)';
     }
   }
-</script>
+  const patternRaw = document.getElementById('pattern').value.trim().toLowerCase();
+  if(!patternRaw){ alert("Shkruaj pattern-in me _ për bosh (p.sh. e_tni_k_)"); return; }
+  // sanitize pattern: allow letters, ë, ç and underscore
+  if(!/^[a-zëç0-9_]+$/.test(patternRaw.replace(/\s+/g,''))){
+    alert("Pattern duhet të përmbajë vetëm shkronja (a-z, ë, ç), numra dhe '_' për bosh.");
+    return;
+  }
+  const pat = patternRaw.replace(/\s+/g,'');
+  const maxR = Math.max(1, Math.min(5000, parseInt(document.getElementById('maxRes').value)||200));
+  const re = new RegExp("^" + pat.replace(/_/g,'.') + "$");
+  const results = [];
+  for(let i=0;i<wordlist.length;i++){
+    const w = wordlist[i];
+    if(w.length !== pat.length) continue;
+    if(re.test(w)) { results.push(w); if(results.length >= maxR) break; }
+  }
+  showResults(results);
+}
 
+/* Show results in list (click to copy) */
+function showResults(arr){
+  const ul = document.getElementById('results');
+  ul.innerHTML = '';
+  if(!arr || arr.length === 0){ ul.innerHTML = '<li class="small">Nuk u gjet asnjë fjalë.</li>'; return; }
+  for(const w of arr){
+    const li = document.createElement('li');
+    li.textContent = w;
+    li.onclick = async function(){
+      try{
+        await navigator.clipboard.writeText(w);
+        this.style.background = '#e6f4ff';
+        this.textContent = w + ' —(kopjuar)';
+        setTimeout(()=>{ this.style.background=''; this.textContent = w; },900);
+      }catch(e){
+        alert('Nuk u arrit të kopjohet (clipboard). Fjalën: ' + w);
+      }
+    };
+    ul.appendChild(li);
+  }
+}
+
+/* Initialize small builtin at start */
+document.getElementById('wlCount').textContent = 'parazgjedh: builtin (test)';
+</script>
 </body>
 </html>
+
